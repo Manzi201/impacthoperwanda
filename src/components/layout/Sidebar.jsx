@@ -10,12 +10,14 @@ import {
   UserPlus,
   ShieldCheck,
   User as UserIcon,
-  Settings
+  Settings,
+  X
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../lib/utils'
 import { useAuth } from '../../hooks/useAuth'
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, profile, signOut } = useAuth()
@@ -57,16 +59,41 @@ const Sidebar = () => {
   const displayRole = profile?.role || user?.user_metadata?.role || (user?.email === 'impactadmin2026@gmail.com' ? 'Admin' : 'Staff')
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 hidden lg:flex flex-col h-screen sticky top-0">
-      <div className="p-8 flex items-center gap-3">
-        <div className="w-10 h-10 bg-primary-900 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-900/20">
-          <Heart size={20} fill="currentColor" />
+    <>
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      <aside className={cn(
+        "fixed lg:sticky top-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col h-screen transition-transform duration-300 lg:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="p-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-900 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-900/20">
+              <Heart size={20} fill="currentColor" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-slate-900 leading-tight">Impact Hope</h1>
+              <p className="text-[10px] text-primary-800 font-bold uppercase tracking-widest">Rwanda MIS</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="lg:hidden p-2 rounded-lg hover:bg-slate-50 text-slate-400"
+          >
+            <X size={20} />
+          </button>
         </div>
-        <div>
-          <h1 className="text-lg font-bold text-slate-900 leading-tight">Impact Hope</h1>
-          <p className="text-[10px] text-primary-800 font-bold uppercase tracking-widest">Rwanda MIS</p>
-        </div>
-      </div>
 
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
         {filteredItems.map((item) => {
@@ -129,7 +156,9 @@ const Sidebar = () => {
           </p>
         </div>
       </div>
+      </div>
     </aside>
+    </>
   )
 }
 

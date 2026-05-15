@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { useState } from 'react'
 import { AuthProvider } from './context/AuthProvider'
 import { useAuth } from './hooks/useAuth'
 import Dashboard from './pages/Dashboard'
@@ -39,6 +40,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
 const AppContent = () => {
   const { user } = useAuth()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   if (!user) {
     return (
@@ -51,9 +53,9 @@ const AppContent = () => {
 
   return (
     <div className="flex min-h-screen bg-[#f8fafc]">
-      <Sidebar />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header />
+        <Header onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <Routes>
             <Route path="/" element={<Dashboard />} />
