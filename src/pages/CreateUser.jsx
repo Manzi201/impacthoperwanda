@@ -219,7 +219,7 @@ const CreateUser = () => {
             </div>
           )}
 
-          <div className="pt-4 flex gap-4">
+          <div className="pt-4 flex flex-col sm:flex-row gap-4">
             <button 
               type="button"
               onClick={() => navigate(-1)}

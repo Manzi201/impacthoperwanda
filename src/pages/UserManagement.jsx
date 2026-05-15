@@ -10,8 +10,10 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDatabase } from '../hooks/useDatabase'
+import { useNavigate } from 'react-router-dom'
 
 const UserManagement = () => {
+  const navigate = useNavigate()
   const { getUsers, loading } = useDatabase()
   const [users, setUsers] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -84,18 +86,18 @@ const UserManagement = () => {
           <h1 className="text-3xl font-bold text-slate-900">User Management</h1>
           <p className="text-slate-500 mt-1">Manage staff access, roles, and security credentials.</p>
         </div>
-        <div className="flex gap-3">
-          <div className="relative group">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <div className="relative group w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text" 
               placeholder="Search staff..." 
-              className="input-field pl-10 py-2 text-sm w-64"
+              className="input-field pl-10 py-2 text-sm w-full md:w-64"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button className="btn-primary py-2 px-4 text-sm">
+          <button onClick={() => navigate('/admin/create-user')} className="btn-primary py-2 px-4 text-sm whitespace-nowrap w-full sm:w-auto justify-center">
             <UserPlus size={18} />
             <span>Add Staff</span>
           </button>
