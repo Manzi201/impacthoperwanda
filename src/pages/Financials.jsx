@@ -23,7 +23,7 @@ const Financials = () => {
   const [stats, setStats] = useState({ income: 0, expense: 0 })
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [search, setSearch] = useState('')
   const [formData, setFormData] = useState({
     amount: '',
@@ -128,10 +128,12 @@ const Financials = () => {
             <Download size={18} />
             <span>Export CSV</span>
           </button>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            <Plus size={18} />
-            <span>Record Transaction</span>
-          </button>
+          {profile?.role !== 'ceo' && (
+            <button onClick={() => setShowModal(true)} className="btn-primary">
+              <Plus size={18} />
+              <span>Record Transaction</span>
+            </button>
+          )}
         </div>
       </div>
 

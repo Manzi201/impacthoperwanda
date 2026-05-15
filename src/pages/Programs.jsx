@@ -12,8 +12,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useDatabase } from '../hooks/useDatabase'
 import { formatCurrency } from '../lib/utils'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 
 const Programs = () => {
+  const { profile } = useAuth()
   const { getPrograms, loading } = useDatabase()
   const [programs, setPrograms] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -68,10 +70,12 @@ const Programs = () => {
           <h1 className="text-3xl font-bold text-slate-900">Program Portfolio</h1>
           <p className="text-slate-500 mt-1">Track the impact and progress of NGO initiatives across Rwanda.</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>
-          <Plus size={20} />
-          <span>Launch New Program</span>
-        </button>
+        {profile?.role !== 'ceo' && (
+          <button className="btn-primary" onClick={() => setShowModal(true)}>
+            <Plus size={20} />
+            <span>Launch New Program</span>
+          </button>
+        )}
       </div>
 
       {loading ? (

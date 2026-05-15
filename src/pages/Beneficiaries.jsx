@@ -16,8 +16,10 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../hooks/useAuth'
 
 const Beneficiaries = () => {
+  const { profile } = useAuth()
   const [beneficiaries, setBeneficiaries] = useState([])
   const [programs, setPrograms] = useState([])
   const [loading, setLoading] = useState(true)
@@ -139,13 +141,15 @@ const Beneficiaries = () => {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Beneficiaries</h1>
           <p className="text-slate-500 mt-1">Manage and track all program participants.</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="btn-primary"
-        >
-          <Plus size={18} />
-          <span>Register Beneficiary</span>
-        </button>
+        {profile?.role !== 'ceo' && (
+          <button 
+            onClick={() => setShowModal(true)}
+            className="btn-primary"
+          >
+            <Plus size={18} />
+            <span>Register Beneficiary</span>
+          </button>
+        )}
       </div>
 
       {/* Filters & Search */}
