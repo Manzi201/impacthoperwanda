@@ -63,7 +63,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -155,7 +155,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             MIS v2.3 Production
           </p>
         </div>
-      </div>
       </div>
     </aside>
     </>
