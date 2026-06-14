@@ -94,6 +94,21 @@ const Programs = () => {
 
   useEffect(() => { loadPrograms() }, [loadPrograms])
 
+  // Real-time: reload when any program status changes (e.g. Finance approves)
+  useEffect(() => {
+    const sub = supabase
+      .channel('programs-status-changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'programs'
+      }, () => {
+        loadPrograms()
+      })
+      .subscribe()
+    return () => sub.unsubscribe()
+  }, [loadPrograms])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)

@@ -369,3 +369,33 @@ CREATE POLICY "programs_select" ON public.programs
 DROP POLICY IF EXISTS "notifications_update" ON public.notifications;
 CREATE POLICY "notifications_update" ON public.notifications
   FOR UPDATE USING (auth.uid() = user_id);
+
+-- ============================================================
+-- HOTFIX 3: Fix beneficiaries status check + programs RLS
+-- Run ONLY these lines in Supabase SQL Editor
+-- ============================================================
+
+-- 1. Fix beneficiaries status constraint - allow all 3 values
+ALTER TABLE public.beneficiaries 
+  DROP CONSTRAINT IF EXISTS beneficiaries_status_check;
+
+ALTER TABLE public.beneficiaries 
+  ADD CONSTRAINT beneficiaries_status_check 
+  CHECK (status IN ('active', 'inactive', 'graduated'));
+
+-- 2. Allow ALL authenticated users to UPDATE beneficiaries status
+DROP POLICY IF EXISTS "beneficiaries_update" ON public.beneficiaries;
+DROP POLICY IF EXISTS "beneficiaries_manage" ON public.beneficiaries;
+
+CREATE POLICY "beneficiaries_manage" ON public.beneficiaries
+  FOR ALL USING (auth.role() = 'authenticated');
+
+-- 3. Allow notifications UPDATE for mark as read
+DROP POLICY IF EXISTS "notifications_update" ON public.notifications;
+CREATE POLICY "notifications_update" ON public.notifications
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- 4. Programs: all authenticated can read, manage for supervisor+
+DROP POLICY IF EXISTS "programs_select" ON public.programs;
+CREATE POLICY "programs_select" ON public.programs
+  FOR SELECT USING (auth.role() = 'authenticated');
