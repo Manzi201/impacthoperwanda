@@ -42,6 +42,12 @@ ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS budget DECIMAL(14,2) DEFAUL
 ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 
+-- Add missing columns to profiles if table already exists
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_temp TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+
 CREATE TABLE IF NOT EXISTS public.beneficiaries (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   first_name TEXT NOT NULL,
@@ -190,13 +196,12 @@ CREATE POLICY "avatars_auth_insert" ON storage.objects
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role, status)
+  INSERT INTO public.profiles (id, email, full_name, role)
   VALUES (
     new.id,
     new.email,
     COALESCE(new.raw_user_meta_data->>'full_name', 'Staff Member'),
-    COALESCE(new.raw_user_meta_data->>'role', 'education'),
-    'active'
+    COALESCE(new.raw_user_meta_data->>'role', 'education')
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN new;
@@ -252,18 +257,20 @@ WHERE email_confirmed_at IS NULL;
 
 -- ============================================================
 -- 9. ENSURE MASTER ADMIN PROFILE EXISTS
--- (Run create_admin.mjs first to create the auth user,
---  then this will set the correct role)
 -- ============================================================
 
-INSERT INTO public.profiles (id, email, full_name, role, status)
-SELECT id, email, 'Master Admin', 'admin', 'active'
+INSERT INTO public.profiles (id, email, full_name, role)
+SELECT id, email, 'Master Admin', 'admin'
 FROM auth.users
 WHERE email = 'impactadmin2026@gmail.com'
 ON CONFLICT (id) DO UPDATE SET
-  role    = 'admin',
-  status  = 'active',
+  role      = 'admin',
   full_name = 'Master Admin';
+
+-- Set status separately (column may have just been added)
+UPDATE public.profiles
+SET status = 'active'
+WHERE email = 'impactadmin2026@gmail.com';
 
 -- ============================================================
 -- 10. VERIFY SETUP
