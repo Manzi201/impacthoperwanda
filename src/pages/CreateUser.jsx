@@ -228,7 +228,6 @@ const CreateUser = () => {
                   <option value="education">Education Officer</option>
                   <option value="supervisor">Program Supervisor</option>
                   <option value="finance">Finance Manager</option>
-                  <option value="hr">Human Resources</option>
                   <option value="ceo">Executive CEO</option>
                   <option value="admin">System Admin</option>
                 </select>
