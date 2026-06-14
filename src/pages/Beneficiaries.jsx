@@ -44,7 +44,10 @@ const Beneficiaries = () => {
         .from('beneficiaries')
         .select('*, programs (name)')
         .order('created_at', { ascending: false })
-      const { data: pData } = await supabase.from('programs').select('*').eq('status', 'active')
+      const { data: pData } = await supabase
+        .from('programs')
+        .select('*')
+        .in('status', ['active', 'pending_approval'])
       setBeneficiaries(bData || [])
       setPrograms(pData || [])
     } catch (err) {

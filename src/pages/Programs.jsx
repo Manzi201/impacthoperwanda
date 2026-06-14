@@ -22,6 +22,24 @@ const formatCurrency = (val) => {
   return `${Number(val).toLocaleString()} RWF`
 }
 
+// Mini component to fetch beneficiary count per program
+const BeneficiaryCount = ({ programId }) => {
+  const [count, setCount] = useState(null)
+  useEffect(() => {
+    supabase.from('beneficiaries').select('*', { count: 'exact', head: true })
+      .eq('program_id', programId)
+      .then(({ count: c }) => setCount(c || 0))
+  }, [programId])
+  return (
+    <div className="bg-primary-50 rounded-2xl p-3 flex items-center justify-between">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] font-bold text-primary-700 uppercase tracking-wider">Enrolled Beneficiaries</span>
+      </div>
+      <span className="text-lg font-bold text-primary-800">{count ?? '...'}</span>
+    </div>
+  )
+}
+
 const Programs = () => {
   const { profile } = useAuth()
   const [programs, setPrograms] = useState([])
@@ -31,6 +49,8 @@ const Programs = () => {
   const [saving, setSaving] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [selectedProgram, setSelectedProgram] = useState(null)
+  const [showDetails, setShowDetails] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -94,7 +114,8 @@ const Programs = () => {
           budget: hasBudget ? parseFloat(formData.budget) : null,
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
-          requested_by: profile?.id
+          requested_by: profile?.id,
+          manager_id: profile?.id   // Supervisor/admin who creates IS the manager
         }])
         .select()
         .single()
@@ -253,7 +274,9 @@ const Programs = () => {
                     }`}></div>
                   </div>
                   {canManage && (
-                    <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-50 text-slate-700 rounded-2xl hover:bg-primary-50 hover:text-primary-800 transition-all text-sm font-bold border border-slate-100">
+                    <button
+                      onClick={() => { setSelectedProgram(prog); setShowDetails(true) }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-50 text-slate-700 rounded-2xl hover:bg-primary-50 hover:text-primary-800 transition-all text-sm font-bold border border-slate-100">
                       <span>View Details</span>
                       <ArrowRight size={16} />
                     </button>
@@ -278,6 +301,91 @@ const Programs = () => {
           )}
         </div>
       )}
+
+      {/* Program Details Modal */}
+      <AnimatePresence>
+        {showDetails && selectedProgram && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+              onClick={() => setShowDetails(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+            <motion.div initial={{opacity:0,scale:0.95,y:20}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:0.95,y:20}}
+              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden">
+
+              {/* Header */}
+              <div className="bg-primary-600 p-6 text-white">
+                <button onClick={() => setShowDetails(false)} className="absolute top-4 right-4 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20">
+                  <X size={16}/>
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Target size={20}/>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">{selectedProgram.name}</h3>
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                      selectedProgram.status === 'active' ? "bg-emerald-400/30 text-emerald-100" :
+                      selectedProgram.status === 'completed' ? "bg-blue-400/30 text-blue-100" :
+                      selectedProgram.status === 'pending_approval' ? "bg-amber-400/30 text-amber-100" :
+                      "bg-white/20 text-white/80"
+                    )}>
+                      {selectedProgram.status === 'pending_approval' ? '⏳ Awaiting Approval' : selectedProgram.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Description */}
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{selectedProgram.description || 'No description provided.'}</p>
+                </div>
+
+                {/* Info grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Manager', value: selectedProgram.profiles?.full_name || 'Unassigned', icon: User },
+                    { label: 'Budget', value: formatCurrency(selectedProgram.budget), icon: Wallet },
+                    { label: 'Start Date', value: selectedProgram.start_date ? new Date(selectedProgram.start_date).toLocaleDateString() : 'N/A', icon: Calendar },
+                    { label: 'End Date', value: selectedProgram.end_date ? new Date(selectedProgram.end_date).toLocaleDateString() : 'N/A', icon: Calendar },
+                  ].map((item, i) => (
+                    <div key={i} className="bg-slate-50 rounded-2xl p-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <item.icon size={11} className="text-slate-400"/>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.label}</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-800">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Beneficiaries count */}
+                <BeneficiaryCount programId={selectedProgram.id} />
+
+                {/* Completion bar */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Program Completion</p>
+                    <span className="text-sm font-bold text-primary-600">
+                      {selectedProgram.status === 'completed' ? '100%' : selectedProgram.status === 'active' ? 'In Progress' : '0%'}
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full bg-primary-500 rounded-full transition-all ${selectedProgram.status === 'completed' ? 'w-full' : 'w-0'}`}></div>
+                  </div>
+                </div>
+
+                <button onClick={() => setShowDetails(false)}
+                  className="w-full py-3 bg-primary-500 text-white rounded-2xl font-bold hover:bg-primary-600 transition-all text-sm">
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Launch Program Modal */}
       <AnimatePresence>

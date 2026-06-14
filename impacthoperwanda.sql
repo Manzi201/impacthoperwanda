@@ -339,3 +339,33 @@ CREATE POLICY "transactions_insert" ON public.transactions
 
 CREATE POLICY "transactions_manage" ON public.transactions
   FOR ALL USING (public.get_my_role() IN ('admin', 'finance', 'ceo'));
+
+-- ============================================================
+-- HOTFIX 2: Fix beneficiaries UPDATE policy for supervisor + 
+--           finance notification RLS
+-- Run in Supabase SQL Editor
+-- ============================================================
+
+-- Allow supervisor to UPDATE beneficiaries (assign programs, change status)
+DROP POLICY IF EXISTS "beneficiaries_manage" ON public.beneficiaries;
+CREATE POLICY "beneficiaries_manage" ON public.beneficiaries
+  FOR ALL USING (
+    public.get_my_role() IN ('admin', 'ceo', 'supervisor', 'education')
+  );
+
+-- Also allow UPDATE separately to be safe
+DROP POLICY IF EXISTS "beneficiaries_update" ON public.beneficiaries;
+CREATE POLICY "beneficiaries_update" ON public.beneficiaries
+  FOR UPDATE USING (
+    public.get_my_role() IN ('admin', 'ceo', 'supervisor', 'education')
+  );
+
+-- Allow finance to read programs (to show pending approvals)
+DROP POLICY IF EXISTS "programs_select" ON public.programs;
+CREATE POLICY "programs_select" ON public.programs
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Allow notifications UPDATE (for mark as read)
+DROP POLICY IF EXISTS "notifications_update" ON public.notifications;
+CREATE POLICY "notifications_update" ON public.notifications
+  FOR UPDATE USING (auth.uid() = user_id);

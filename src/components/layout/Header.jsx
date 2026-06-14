@@ -114,10 +114,15 @@ const Header = ({ onMenuClick }) => {
                 </div>
                 <button 
                   onClick={async () => {
-                    await import('../../lib/supabase').then(({supabase}) => 
-                      supabase.from('notifications').update({is_read: true}).eq('user_id', profile?.id)
-                    )
+                    if (!profile?.id) return
+                    const { supabase } = await import('../../lib/supabase')
+                    await supabase
+                      .from('notifications')
+                      .update({ is_read: true })
+                      .eq('user_id', profile.id)
                     setShowNotifications(false)
+                    // Force refresh notifications by triggering re-render
+                    window.dispatchEvent(new Event('notifications-read'))
                   }}
                   className="w-full py-3 text-xs font-bold text-primary-800 bg-slate-50 hover:bg-primary-50 transition-colors border-t border-slate-100">
                   Mark All as Read
