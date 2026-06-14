@@ -158,6 +158,9 @@ CREATE POLICY "Finance can manage transactions." ON public.transactions
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
   );
+
+-- Notifications
+CREATE POLICY "Staff can view notifications." ON public.notifications
   FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "System can create notifications." ON public.notifications
