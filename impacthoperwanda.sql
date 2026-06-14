@@ -1,10 +1,19 @@
--- Impact Hope Rwanda MIS - Database Schema (Migration Safe)
--- Version 2.6 - Auto Profile Creation & Email Confirmation Fix
+-- ============================================================
+-- Impact Hope Rwanda MIS - Complete Database Setup
+-- Version 3.0 - Full Schema + RLS + Triggers + Admin Account
+-- Run this ONCE in Supabase SQL Editor
+-- ============================================================
 
+-- ============================================================
 -- 1. EXTENSIONS
+-- ============================================================
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 2. PROFILES TABLE
+-- ============================================================
+-- 2. CREATE TABLES (safe - IF NOT EXISTS)
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
@@ -17,7 +26,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. PROGRAMS TABLE
 CREATE TABLE IF NOT EXISTS public.programs (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -29,7 +37,11 @@ CREATE TABLE IF NOT EXISTS public.programs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. BENEFICIARIES TABLE
+-- Add missing columns to programs if table already exists
+ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS budget DECIMAL(14,2) DEFAULT 0;
+ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS start_date DATE;
+ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+
 CREATE TABLE IF NOT EXISTS public.beneficiaries (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   first_name TEXT NOT NULL,
@@ -42,7 +54,6 @@ CREATE TABLE IF NOT EXISTS public.beneficiaries (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. TRANSACTIONS TABLE
 CREATE TABLE IF NOT EXISTS public.transactions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   amount DECIMAL(12,2) NOT NULL,
@@ -54,7 +65,6 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 6. NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -65,155 +75,128 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. STORAGE SETUP
-INSERT INTO storage.buckets (id, name, public) 
+-- ============================================================
+-- 3. STORAGE SETUP
+-- ============================================================
+
+INSERT INTO storage.buckets (id, name, public)
 VALUES ('avatars', 'avatars', true)
 ON CONFLICT (id) DO NOTHING;
 
--- 8. RLS ENABLEMENT
+-- ============================================================
+-- 4. ENABLE ROW LEVEL SECURITY
+-- ============================================================
+
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.programs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.beneficiaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- 9. CLEAN UP POLICIES (DROP EVERYTHING FIRST)
-DO $$ 
+-- ============================================================
+-- 5. DROP ALL EXISTING POLICIES (clean slate)
+-- ============================================================
+
+DO $$
+DECLARE r RECORD;
 BEGIN
-    -- Profiles
-    DROP POLICY IF EXISTS "Public profiles are viewable by authenticated users." ON public.profiles;
-    DROP POLICY IF EXISTS "Users can insert their own profiles." ON public.profiles;
-    DROP POLICY IF EXISTS "Users can update their own profiles." ON public.profiles;
-    DROP POLICY IF EXISTS "Admins can manage all profiles." ON public.profiles;
-    
-    -- Programs
-    DROP POLICY IF EXISTS "Staff can view programs." ON public.programs;
-    DROP POLICY IF EXISTS "Admins/CEOs can manage programs." ON public.programs;
-    
-    -- Beneficiaries
-    DROP POLICY IF EXISTS "Staff can view beneficiaries." ON public.beneficiaries;
-    DROP POLICY IF EXISTS "Admins/CEOs can manage beneficiaries." ON public.beneficiaries;
-    
-    -- Transactions
-    DROP POLICY IF EXISTS "Users can view transactions." ON public.transactions;
-    DROP POLICY IF EXISTS "Finance can manage transactions." ON public.transactions;
-    DROP POLICY IF EXISTS "Finance can insert transactions." ON public.transactions;
-    
-    -- Notifications
-    DROP POLICY IF EXISTS "Staff can view notifications." ON public.notifications;
-    DROP POLICY IF EXISTS "System can create notifications." ON public.notifications;
-    
-    -- Storage
-    DROP POLICY IF EXISTS "Avatar images are publicly accessible." ON storage.objects;
-    DROP POLICY IF EXISTS "Users can upload their own avatar." ON storage.objects;
+  FOR r IN
+    SELECT policyname, tablename
+    FROM pg_policies
+    WHERE schemaname = 'public'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', r.policyname, r.tablename);
+  END LOOP;
 END $$;
 
--- 10. RECREATE POLICIES FRESH
--- Profiles
-CREATE POLICY "Public profiles are viewable by authenticated users." ON public.profiles
+DROP POLICY IF EXISTS "Avatar images are publicly accessible." ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload their own avatar." ON storage.objects;
+DROP POLICY IF EXISTS "avatars_public_read" ON storage.objects;
+DROP POLICY IF EXISTS "avatars_auth_insert" ON storage.objects;
+
+-- ============================================================
+-- 6. CREATE RLS POLICIES
+-- ============================================================
+
+-- PROFILES
+CREATE POLICY "profiles_select" ON public.profiles
   FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can insert their own profiles." ON public.profiles
+CREATE POLICY "profiles_insert_own" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
-CREATE POLICY "Users can update their own profiles." ON public.profiles
+CREATE POLICY "profiles_update_own" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "Admins can manage all profiles." ON public.profiles
+CREATE POLICY "profiles_admin_all" ON public.profiles
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
--- Programs
-CREATE POLICY "Staff can view programs." ON public.programs
+-- PROGRAMS
+CREATE POLICY "programs_select" ON public.programs
   FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Admins/CEOs can manage programs." ON public.programs
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'ceo'))
-  );
-
--- Beneficiaries
-CREATE POLICY "Staff can view beneficiaries." ON public.beneficiaries
-  FOR SELECT USING (auth.role() = 'authenticated');
-
-CREATE POLICY "Staff can insert beneficiaries." ON public.beneficiaries
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
-CREATE POLICY "Admins/CEOs can manage beneficiaries." ON public.beneficiaries
+CREATE POLICY "programs_manage" ON public.programs
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'ceo', 'supervisor'))
   );
 
--- Transactions
-CREATE POLICY "Users can view transactions." ON public.transactions
+-- BENEFICIARIES
+CREATE POLICY "beneficiaries_select" ON public.beneficiaries
   FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Finance can insert transactions." ON public.transactions
+CREATE POLICY "beneficiaries_insert" ON public.beneficiaries
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "beneficiaries_manage" ON public.beneficiaries
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'ceo', 'supervisor', 'education'))
+  );
+
+-- TRANSACTIONS
+CREATE POLICY "transactions_select" ON public.transactions
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "transactions_insert" ON public.transactions
   FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
   );
 
-CREATE POLICY "Finance can manage transactions." ON public.transactions
+CREATE POLICY "transactions_manage" ON public.transactions
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
   );
 
--- Notifications
-CREATE POLICY "Staff can view notifications." ON public.notifications
+-- NOTIFICATIONS
+CREATE POLICY "notifications_select" ON public.notifications
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "System can create notifications." ON public.notifications
+CREATE POLICY "notifications_insert" ON public.notifications
   FOR INSERT WITH CHECK (true);
 
--- Storage (Avatars)
-CREATE POLICY "Avatar images are publicly accessible." ON storage.objects
+-- STORAGE
+CREATE POLICY "avatars_public_read" ON storage.objects
   FOR SELECT USING (bucket_id = 'avatars');
 
-CREATE POLICY "Users can upload their own avatar." ON storage.objects
+CREATE POLICY "avatars_auth_insert" ON storage.objects
   FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
 
--- 11. TRIGGERS
-CREATE OR REPLACE FUNCTION public.notify_new_beneficiary()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.notifications (user_id, title, content, type)
-  SELECT id, 'New Beneficiary Registered', 
-         new.first_name || ' ' || new.last_name || ' has been added to the system.', 
-         'success'
-  FROM public.profiles
-  WHERE role IN ('admin', 'supervisor');
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_beneficiary_added ON public.beneficiaries;
-CREATE TRIGGER on_beneficiary_added
-  AFTER INSERT ON public.beneficiaries
-  FOR EACH ROW EXECUTE FUNCTION public.notify_new_beneficiary();
-
--- 12. BOOTSTRAP ADMIN
-UPDATE public.profiles 
-SET role = 'admin' 
-WHERE email = 'impactadmin2026@gmail.com';
-
 -- ============================================================
--- 13. AUTO PROFILE CREATION ON NEW USER (handle_new_user)
--- Iyo admin akoze user mushya, profile irakozwe ako kanya
--- nta gusabwa ko user asubiza email confirmation
+-- 7. TRIGGERS
 -- ============================================================
 
+-- Auto-create profile when new user signs up
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role, status, avatar_url)
+  INSERT INTO public.profiles (id, email, full_name, role, status)
   VALUES (
     new.id,
     new.email,
     COALESCE(new.raw_user_meta_data->>'full_name', 'Staff Member'),
     COALESCE(new.raw_user_meta_data->>'role', 'education'),
-    'active',
-    new.raw_user_meta_data->>'avatar_url'
+    'active'
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN new;
@@ -225,21 +208,7 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- ============================================================
--- 14. CONFIRM EMAILS YA USERS BOSE BATAREMEWE
--- Iyi query ikora email confirmation ku users bose
--- bari pending kugira ngo bashobore kwinjira ako kanya
--- ============================================================
-
-UPDATE auth.users
-SET email_confirmed_at = now()
-WHERE email_confirmed_at IS NULL;
-
--- ============================================================
--- 15. UPDATED_AT AUTO-UPDATE TRIGGER
--- Iyo profile ivuguruwe, updated_at irahinduka nyawe
--- ============================================================
-
+-- Auto-update updated_at on profile changes
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS trigger AS $$
 BEGIN
@@ -253,23 +222,57 @@ CREATE TRIGGER on_profile_updated
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
+-- Notify admin/supervisor when new beneficiary is added
+CREATE OR REPLACE FUNCTION public.notify_new_beneficiary()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.notifications (user_id, title, content, type)
+  SELECT id,
+    'New Beneficiary Registered',
+    new.first_name || ' ' || new.last_name || ' has been added to the system.',
+    'success'
+  FROM public.profiles
+  WHERE role IN ('admin', 'supervisor');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_beneficiary_added ON public.beneficiaries;
+CREATE TRIGGER on_beneficiary_added
+  AFTER INSERT ON public.beneficiaries
+  FOR EACH ROW EXECUTE FUNCTION public.notify_new_beneficiary();
+
 -- ============================================================
--- 16. ADD MISSING COLUMNS TO EXISTING TABLES (safe migrations)
+-- 8. CONFIRM ALL EXISTING USERS' EMAILS
 -- ============================================================
 
-ALTER TABLE public.programs 
-  ADD COLUMN IF NOT EXISTS budget DECIMAL(14,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS start_date DATE,
-  ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+UPDATE auth.users
+SET email_confirmed_at = now()
+WHERE email_confirmed_at IS NULL;
 
--- Drop and recreate transaction INSERT policy
-DROP POLICY IF EXISTS "Finance can insert transactions." ON public.transactions;
-CREATE POLICY "Finance can insert transactions." ON public.transactions
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
-  );
+-- ============================================================
+-- 9. ENSURE MASTER ADMIN PROFILE EXISTS
+-- (Run create_admin.mjs first to create the auth user,
+--  then this will set the correct role)
+-- ============================================================
 
--- Drop and recreate beneficiary INSERT policy  
-DROP POLICY IF EXISTS "Staff can insert beneficiaries." ON public.beneficiaries;
-CREATE POLICY "Staff can insert beneficiaries." ON public.beneficiaries
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+INSERT INTO public.profiles (id, email, full_name, role, status)
+SELECT id, email, 'Master Admin', 'admin', 'active'
+FROM auth.users
+WHERE email = 'impactadmin2026@gmail.com'
+ON CONFLICT (id) DO UPDATE SET
+  role    = 'admin',
+  status  = 'active',
+  full_name = 'Master Admin';
+
+-- ============================================================
+-- 10. VERIFY SETUP
+-- ============================================================
+
+SELECT
+  t.table_name,
+  'EXISTS' AS status
+FROM information_schema.tables t
+WHERE t.table_schema = 'public'
+  AND t.table_name IN ('profiles','programs','beneficiaries','transactions','notifications')
+ORDER BY t.table_name;
