@@ -134,10 +134,17 @@ CREATE POLICY "profiles_insert_own" ON public.profiles
 CREATE POLICY "profiles_update_own" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "profiles_admin_all" ON public.profiles
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+-- Admin ALL policy uses security definer function to avoid recursion
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
   );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+CREATE POLICY "profiles_admin_all" ON public.profiles
+  FOR ALL USING (public.is_admin());
 
 -- PROGRAMS
 CREATE POLICY "programs_select" ON public.programs
@@ -145,7 +152,7 @@ CREATE POLICY "programs_select" ON public.programs
 
 CREATE POLICY "programs_manage" ON public.programs
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'ceo', 'supervisor'))
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'ceo', 'supervisor')
   );
 
 -- BENEFICIARIES
@@ -157,7 +164,7 @@ CREATE POLICY "beneficiaries_insert" ON public.beneficiaries
 
 CREATE POLICY "beneficiaries_manage" ON public.beneficiaries
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'ceo', 'supervisor', 'education'))
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'ceo', 'supervisor', 'education')
   );
 
 -- TRANSACTIONS
@@ -166,12 +173,12 @@ CREATE POLICY "transactions_select" ON public.transactions
 
 CREATE POLICY "transactions_insert" ON public.transactions
   FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'finance', 'ceo')
   );
 
 CREATE POLICY "transactions_manage" ON public.transactions
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'finance', 'ceo')
   );
 
 -- NOTIFICATIONS
@@ -283,3 +290,42 @@ FROM information_schema.tables t
 WHERE t.table_schema = 'public'
   AND t.table_name IN ('profiles','programs','beneficiaries','transactions','notifications')
 ORDER BY t.table_name;
+
+-- ============================================================
+-- HOTFIX: Run this in SQL Editor to fix infinite recursion NOW
+-- (without re-running the full schema)
+-- ============================================================
+
+-- Drop the recursive policies
+DROP POLICY IF EXISTS "profiles_admin_all" ON public.profiles;
+DROP POLICY IF EXISTS "programs_manage" ON public.programs;
+DROP POLICY IF EXISTS "beneficiaries_manage" ON public.beneficiaries;
+DROP POLICY IF EXISTS "transactions_manage" ON public.transactions;
+DROP POLICY IF EXISTS "transactions_insert" ON public.transactions;
+DROP POLICY IF EXISTS "Admins can manage all profiles." ON public.profiles;
+DROP POLICY IF EXISTS "Admins/CEOs can manage programs." ON public.programs;
+DROP POLICY IF EXISTS "Admins/CEOs can manage beneficiaries." ON public.beneficiaries;
+DROP POLICY IF EXISTS "Finance can manage transactions." ON public.transactions;
+DROP POLICY IF EXISTS "Finance can insert transactions." ON public.transactions;
+
+-- Create helper function (SECURITY DEFINER bypasses RLS - no recursion)
+CREATE OR REPLACE FUNCTION public.get_my_role()
+RETURNS TEXT AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- Recreate policies using the function
+CREATE POLICY "profiles_admin_all" ON public.profiles
+  FOR ALL USING (public.get_my_role() = 'admin');
+
+CREATE POLICY "programs_manage" ON public.programs
+  FOR ALL USING (public.get_my_role() IN ('admin', 'ceo', 'supervisor'));
+
+CREATE POLICY "beneficiaries_manage" ON public.beneficiaries
+  FOR ALL USING (public.get_my_role() IN ('admin', 'ceo', 'supervisor', 'education'));
+
+CREATE POLICY "transactions_insert" ON public.transactions
+  FOR INSERT WITH CHECK (public.get_my_role() IN ('admin', 'finance', 'ceo'));
+
+CREATE POLICY "transactions_manage" ON public.transactions
+  FOR ALL USING (public.get_my_role() IN ('admin', 'finance', 'ceo'));
