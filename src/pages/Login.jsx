@@ -171,7 +171,13 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-12 p-6 bg-slate-50 rounded-2xl border border-slate-100">
+          <div className="mt-6 text-center">
+            <a href="/forgot-password" className="text-sm text-primary-800 hover:text-primary-900 font-semibold transition-colors">
+              Forgot your password?
+            </a>
+          </div>
+
+          <div className="mt-6 p-6 bg-slate-50 rounded-2xl border border-slate-100">
             <p className="text-xs text-slate-500 text-center leading-relaxed">
               For security reasons, public registration is disabled. If you need access, please contact your System Administrator.
             </p>

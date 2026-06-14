@@ -54,6 +54,7 @@ const AppContent = () => {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )
@@ -72,6 +73,7 @@ const AppContent = () => {
             <Route path="/financials" element={<Financials />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<AccountSettings />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             
             {/* Admin Only Routes */}
             <Route 
