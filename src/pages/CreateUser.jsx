@@ -66,16 +66,16 @@ const CreateUser = () => {
         avatarUrl = publicUrl
       }
 
-      // 2. Create the Auth User using the Admin Client (prevents logging out current user)
-      const { data: signUpData, error: signUpError } = await adminAuthClient.auth.signUp({
+      // 2. Create the Auth User using service_role admin client
+      // admin.createUser bypasses email confirmation automatically
+      const { data: signUpData, error: signUpError } = await adminAuthClient.auth.admin.createUser({
         email: formData.email,
         password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-            role: formData.role,
-            avatar_url: avatarUrl
-          }
+        email_confirm: true,
+        user_metadata: {
+          full_name: formData.fullName,
+          role: formData.role,
+          avatar_url: avatarUrl
         }
       })
 

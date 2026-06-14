@@ -141,8 +141,9 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     setProfile(null)
     setUser(null)
-    const { error } = await supabase.auth.signOut()
-    return { error }
+    isFetchingRef.current = false
+    await supabase.auth.signOut()
+    window.location.href = '/login'
   }
 
   const resetPassword = async (email) => {

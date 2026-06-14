@@ -56,6 +56,28 @@ const Reports = () => {
     fetchStats()
   }, [])
 
+  const handleExportCSV = () => {
+    const rows = [
+      ['Impact Hope Rwanda MIS - Full System Report'],
+      ['Generated On', new Date().toLocaleString()],
+      [''],
+      ['Metric', 'Value'],
+      ['Total Beneficiaries', stats.beneficiaries],
+      ['Total Programs', stats.programs],
+      ['Total Income (RWF)', stats.income],
+      ['Total Expenses (RWF)', stats.expenses],
+      ['Net Balance (RWF)', stats.income - stats.expenses],
+      ['ROI (%)', stats.income > 0 ? ((stats.income - stats.expenses) / stats.income * 100).toFixed(1) : 0]
+    ]
+    const csv = 'data:text/csv;charset=utf-8,' + rows.map(r => r.join(',')).join('\n')
+    const link = document.createElement('a')
+    link.setAttribute('href', encodeURI(csv))
+    link.setAttribute('download', `MIS_Report_${new Date().toLocaleDateString()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const chartData = [
     { name: 'Beneficiaries', value: stats.beneficiaries, color: '#0f172a' },
     { name: 'Programs', value: stats.programs, color: '#0891b2' },
@@ -77,9 +99,9 @@ const Reports = () => {
             <span>Last 30 Days</span>
             <ChevronDown size={14} />
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={handleExportCSV}>
             <Download size={18} />
-            <span>Generate PDF</span>
+            <span>Export CSV Report</span>
           </button>
         </div>
       </div>

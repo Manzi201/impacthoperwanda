@@ -1,7 +1,8 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export const useDatabase = () => {
+  const [loading, setLoading] = useState(false)
   const getStats = useCallback(async () => {
     try {
       const { count: beneficiaries } = await supabase
@@ -57,16 +58,16 @@ export const useDatabase = () => {
   }, [])
 
   const getPrograms = useCallback(async () => {
+    setLoading(true)
     const { data, error } = await supabase
       .from('programs')
-      .select('*')
+      .select('*, profiles:manager_id (full_name)')
       .order('created_at', { ascending: false })
-
+    setLoading(false)
     if (error) {
       console.error('Error fetching programs:', error)
       return { data: [], error }
     }
-
     return { data, error: null }
   }, [])
 

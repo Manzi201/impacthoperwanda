@@ -326,7 +326,7 @@ const HRDashboard = ({ stats, activities, navigate, handleExport }) => (
     </div>
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <QuickActionCard icon={Users} label="Staff Directory" sublabel="View Team Members" onClick={() => navigate('/beneficiaries')} variant="dark" />
+      <QuickActionCard icon={Users} label="Beneficiaries" sublabel="View All Participants" onClick={() => navigate('/beneficiaries')} variant="dark" />
       <QuickActionCard icon={BarChart3} label="View Reports" sublabel="HR Analytics" onClick={() => navigate('/reports')} color="bg-emerald-50" textColor="text-emerald-700" />
     </div>
 

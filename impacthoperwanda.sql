@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS public.programs (
   name TEXT NOT NULL,
   description TEXT,
   status TEXT CHECK (status IN ('active', 'inactive', 'completed')) DEFAULT 'active',
+  budget DECIMAL(14,2) DEFAULT 0,
+  start_date DATE,
+  manager_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -94,6 +97,7 @@ BEGIN
     -- Transactions
     DROP POLICY IF EXISTS "Users can view transactions." ON public.transactions;
     DROP POLICY IF EXISTS "Finance can manage transactions." ON public.transactions;
+    DROP POLICY IF EXISTS "Finance can insert transactions." ON public.transactions;
     
     -- Notifications
     DROP POLICY IF EXISTS "Staff can view notifications." ON public.notifications;
@@ -133,13 +137,27 @@ CREATE POLICY "Admins/CEOs can manage programs." ON public.programs
 CREATE POLICY "Staff can view beneficiaries." ON public.beneficiaries
   FOR SELECT USING (auth.role() = 'authenticated');
 
+CREATE POLICY "Staff can insert beneficiaries." ON public.beneficiaries
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
 CREATE POLICY "Admins/CEOs can manage beneficiaries." ON public.beneficiaries
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'ceo', 'supervisor'))
   );
 
--- Notifications
-CREATE POLICY "Staff can view notifications." ON public.notifications
+-- Transactions
+CREATE POLICY "Users can view transactions." ON public.transactions
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Finance can insert transactions." ON public.transactions
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
+  );
+
+CREATE POLICY "Finance can manage transactions." ON public.transactions
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
+  );
   FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "System can create notifications." ON public.notifications
@@ -231,3 +249,24 @@ DROP TRIGGER IF EXISTS on_profile_updated ON public.profiles;
 CREATE TRIGGER on_profile_updated
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- ============================================================
+-- 16. ADD MISSING COLUMNS TO EXISTING TABLES (safe migrations)
+-- ============================================================
+
+ALTER TABLE public.programs 
+  ADD COLUMN IF NOT EXISTS budget DECIMAL(14,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS start_date DATE,
+  ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+-- Drop and recreate transaction INSERT policy
+DROP POLICY IF EXISTS "Finance can insert transactions." ON public.transactions;
+CREATE POLICY "Finance can insert transactions." ON public.transactions
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'finance', 'ceo'))
+  );
+
+-- Drop and recreate beneficiary INSERT policy  
+DROP POLICY IF EXISTS "Staff can insert beneficiaries." ON public.beneficiaries;
+CREATE POLICY "Staff can insert beneficiaries." ON public.beneficiaries
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');

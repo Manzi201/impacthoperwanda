@@ -106,8 +106,8 @@ const Beneficiaries = () => {
         .insert([{
           first_name: formData.firstName,
           last_name: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
+          email: formData.email || null,  // null instead of "" to avoid UNIQUE constraint
+          phone: formData.phone || null,
           program_id: formData.programId || null,
           status: formData.status,
           photo_url: photoUrl
@@ -115,7 +115,6 @@ const Beneficiaries = () => {
 
       if (error) throw error
 
-      alert('Beneficiary registered successfully!')
       setShowModal(false)
       setFormData({ firstName: '', lastName: '', email: '', phone: '', programId: '', status: 'active' })
       setPhoto(null)
