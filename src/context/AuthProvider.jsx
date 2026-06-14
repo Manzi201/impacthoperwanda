@@ -109,6 +109,9 @@ export const AuthProvider = ({ children }) => {
       // Skip the first INITIAL_SESSION event — getSession handles that
       if (!initialised) return
 
+      // If this is a password recovery event, don't navigate away
+      if (_event === 'PASSWORD_RECOVERY') return
+
       const currentUser = session?.user ?? null
       setUser(currentUser)
 
@@ -148,7 +151,7 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
+      redirectTo: `${window.location.origin}/forgot-password`
     })
     return { error }
   }
