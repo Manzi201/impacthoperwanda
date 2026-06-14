@@ -30,10 +30,12 @@ CREATE TABLE IF NOT EXISTS public.programs (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
-  status TEXT CHECK (status IN ('active', 'inactive', 'completed')) DEFAULT 'active',
+  status TEXT CHECK (status IN ('active', 'inactive', 'completed', 'pending_approval', 'rejected')) DEFAULT 'active',
   budget DECIMAL(14,2) DEFAULT 0,
   start_date DATE,
+  end_date DATE,
   manager_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  requested_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -41,6 +43,13 @@ CREATE TABLE IF NOT EXISTS public.programs (
 ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS budget DECIMAL(14,2) DEFAULT 0;
 ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS end_date DATE;
+ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS requested_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+-- Extend status check to allow new values
+ALTER TABLE public.programs DROP CONSTRAINT IF EXISTS programs_status_check;
+ALTER TABLE public.programs ADD CONSTRAINT programs_status_check 
+  CHECK (status IN ('active', 'inactive', 'completed', 'pending_approval', 'rejected'));
 
 -- Add missing columns to profiles if table already exists
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
@@ -78,6 +87,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   content TEXT NOT NULL,
   type TEXT CHECK (type IN ('info', 'success', 'warning', 'error')) DEFAULT 'info',
   is_read BOOLEAN DEFAULT FALSE,
+  program_id UUID REFERENCES public.programs(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

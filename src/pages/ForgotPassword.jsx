@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Heart, Mail, ArrowRight, ChevronLeft, KeyRound, CheckCircle2, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Mail, ArrowRight, ChevronLeft, KeyRound, CheckCircle2, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { supabase } from '../lib/supabase'
+import logo from '../assets/logo.png'
 
 const ForgotPassword = () => {
   const navigate = useNavigate()
@@ -86,12 +87,10 @@ const ForgotPassword = () => {
 
         <div className="relative z-10">
           <Link to="/login" className="flex items-center gap-3 mb-16">
-            <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-              <Heart size={28} className="text-secondary-400" fill="currentColor" />
-            </div>
+            <img src={logo} alt="Impact Hope Rwanda" className="w-14 h-14 object-contain" />
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Impact Hope Rwanda</h1>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-primary-300 font-bold">Empowering Communities</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-primary-200 font-bold">Empowering Communities</p>
             </div>
           </Link>
 

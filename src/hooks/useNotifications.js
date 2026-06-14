@@ -36,7 +36,7 @@ export const useNotifications = () => {
         .select('*')
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false })
-        .limit(10)
+        .limit(50)
       
       if (data) {
         setNotifications(data.map(n => ({

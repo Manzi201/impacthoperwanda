@@ -2,17 +2,18 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-50: #ecfdf5;
-  --color-primary-100: #d1fae5;
-  --color-primary-200: #a7f3d0;
-  --color-primary-300: #6ee7b7;
-  --color-primary-400: #34d399;
-  --color-primary-500: #10b981;
-  --color-primary-600: #059669;
-  --color-primary-700: #047857;
-  --color-primary-800: #065f46;
-  --color-primary-900: #064e3b;
-  --color-primary-950: #022c22;
+  /* Primary: Impact Hope Orange - from logo */
+  --color-primary-50:  #fff7ed;
+  --color-primary-100: #ffedd5;
+  --color-primary-200: #fed7aa;
+  --color-primary-300: #fdba74;
+  --color-primary-400: #fb923c;
+  --color-primary-500: #f97316;
+  --color-primary-600: #ea6c0a;
+  --color-primary-700: #c2570a;
+  --color-primary-800: #9a4200;
+  --color-primary-900: #7c3500;
+  --color-primary-950: #431b00;
 
   --color-secondary-50: #fffbeb;
   --color-secondary-100: #fef3c7;

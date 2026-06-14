@@ -5,6 +5,7 @@ import { useNotifications } from '../../hooks/useNotifications'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '../../lib/utils'
+import logo from '../../assets/logo.png'
 
 const Header = ({ onMenuClick }) => {
   const { user, profile, signOut } = useAuth()
@@ -101,7 +102,7 @@ const Header = ({ onMenuClick }) => {
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-900 group-hover:text-primary-800 transition-colors">{n.title}</p>
-                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">{n.desc}</p>
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">{n.content}</p>
                           <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1 font-medium">
                             <Clock size={10} />
                             {n.time}
@@ -111,8 +112,15 @@ const Header = ({ onMenuClick }) => {
                     </div>
                   ))}
                 </div>
-                <button className="w-full py-3 text-xs font-bold text-primary-800 bg-slate-50 hover:bg-primary-50 transition-colors">
-                  View All Notifications
+                <button 
+                  onClick={async () => {
+                    await import('../../lib/supabase').then(({supabase}) => 
+                      supabase.from('notifications').update({is_read: true}).eq('user_id', profile?.id)
+                    )
+                    setShowNotifications(false)
+                  }}
+                  className="w-full py-3 text-xs font-bold text-primary-800 bg-slate-50 hover:bg-primary-50 transition-colors border-t border-slate-100">
+                  Mark All as Read
                 </button>
               </motion.div>
             )}

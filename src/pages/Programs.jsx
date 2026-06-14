@@ -36,7 +36,8 @@ const Programs = () => {
     description: '',
     status: 'active',
     budget: '',
-    start_date: ''
+    start_date: '',
+    end_date: ''
   })
 
   const canManage = ['admin', 'supervisor', 'ceo'].includes(profile?.role)
@@ -53,6 +54,17 @@ const Programs = () => {
 
       if (error) throw error
       setPrograms(data || [])
+      // Auto-complete programs whose end_date has passed
+      const today = new Date().toISOString().split('T')[0]
+      const toComplete = (data || []).filter(p => p.end_date && p.end_date < today && p.status === 'active')
+      if (toComplete.length > 0) {
+        await Promise.all(toComplete.map(p =>
+          supabase.from('programs').update({ status: 'completed' }).eq('id', p.id)
+        ))
+        // Reload after auto-complete
+        const { data: refreshed } = await supabase.from('programs').select('*, profiles:manager_id (full_name)').order('created_at', { ascending: false })
+        setPrograms(refreshed || [])
+      }
     } catch (err) {
       setProgramError(err.message)
     } finally {
@@ -67,25 +79,58 @@ const Programs = () => {
     setSaving(true)
     setErrorMsg('')
     try {
-      const { error } = await supabase
+      // If supervisor submits with a budget, set status to pending_approval
+      // Admin directly sets active
+      const isSupervisor = profile?.role === 'supervisor'
+      const hasBudget = formData.budget && parseFloat(formData.budget) > 0
+      const initialStatus = (isSupervisor && hasBudget) ? 'pending_approval' : formData.status
+
+      const { data: newProgram, error } = await supabase
         .from('programs')
         .insert([{
           name: formData.name,
           description: formData.description,
-          status: formData.status,
-          budget: formData.budget ? parseFloat(formData.budget) : null,
-          start_date: formData.start_date || null
+          status: initialStatus,
+          budget: hasBudget ? parseFloat(formData.budget) : null,
+          start_date: formData.start_date || null,
+          end_date: formData.end_date || null,
+          requested_by: profile?.id
         }])
+        .select()
+        .single()
 
       if (error) throw error
 
-      setSuccessMsg('Program launched successfully!')
+      // If pending approval, notify all finance users
+      if (initialStatus === 'pending_approval') {
+        const { data: financeUsers } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('role', ['finance', 'admin'])
+
+        if (financeUsers?.length > 0) {
+          await supabase.from('notifications').insert(
+            financeUsers.map(u => ({
+              user_id: u.id,
+              title: '💰 Budget Approval Required',
+              content: `Program "${formData.name}" requires budget approval of ${Number(formData.budget).toLocaleString()} RWF. Submitted by ${profile?.full_name || 'Supervisor'}.`,
+              type: 'warning',
+              program_id: newProgram.id
+            }))
+          )
+        }
+
+        setSuccessMsg('Program submitted for finance approval!')
+      } else {
+        setSuccessMsg('Program launched successfully!')
+      }
+
       setTimeout(() => {
         setSuccessMsg('')
         setShowModal(false)
-        setFormData({ name: '', description: '', status: 'active', budget: '', start_date: '' })
+        setFormData({ name: '', description: '', status: 'active', budget: '', start_date: '', end_date: '' })
         loadPrograms()
-      }, 1500)
+      }, 1800)
     } catch (err) {
       setErrorMsg(err.message)
     } finally {
@@ -140,15 +185,19 @@ const Programs = () => {
                       "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
                       prog.status === 'active' ? "bg-emerald-50 text-emerald-700" :
                       prog.status === 'completed' ? "bg-blue-50 text-blue-700" :
+                      prog.status === 'pending_approval' ? "bg-amber-50 text-amber-700" :
+                      prog.status === 'rejected' ? "bg-rose-50 text-rose-700" :
                       "bg-slate-50 text-slate-500"
                     )}>
-                      {prog.status}
+                      {prog.status === 'pending_approval' ? '⏳ Awaiting Approval' :
+                       prog.status === 'rejected' ? '✗ Rejected' :
+                       prog.status}
                     </span>
                   </div>
                   <h3 className="text-xl font-bold text-slate-900 group-hover:text-primary-800 transition-colors">{prog.name}</h3>
                   <p className="text-slate-500 mt-2 text-sm leading-relaxed">{prog.description || 'No description available.'}</p>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 mt-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-5 mt-6">
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Manager</span>
                       <div className="flex items-center gap-1.5 mt-1">
@@ -169,6 +218,15 @@ const Programs = () => {
                         <Calendar size={12} className="text-slate-400" />
                         <span className="text-sm font-semibold text-slate-700">
                           {prog.start_date ? new Date(prog.start_date).toLocaleDateString() : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">End Date</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Calendar size={12} className="text-slate-400" />
+                        <span className={`text-sm font-semibold ${prog.end_date && prog.end_date < new Date().toISOString().split('T')[0] ? 'text-rose-600' : 'text-slate-700'}`}>
+                          {prog.end_date ? new Date(prog.end_date).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -297,17 +355,38 @@ const Programs = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">End Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-4 py-3 bg-slate-50 rounded-2xl outline-none focus:bg-white focus:ring-4 focus:ring-primary-800/5 text-sm transition-all"
+                      value={formData.end_date}
+                      onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Initial Status</label>
-                  <select
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl outline-none focus:bg-white focus:ring-4 focus:ring-primary-800/5 text-sm font-bold appearance-none transition-all"
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="completed">Completed</option>
-                  </select>
+                  {profile?.role === 'supervisor' ? (
+                    <div className="w-full px-4 py-3 bg-amber-50 border border-amber-100 rounded-2xl text-sm text-amber-700 font-bold flex items-center gap-2">
+                      <span>⏳</span>
+                      {formData.budget && parseFloat(formData.budget) > 0
+                        ? 'Will be submitted for Finance approval'
+                        : 'Will be set to Active (no budget required)'}
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full px-4 py-3 bg-slate-50 rounded-2xl outline-none focus:bg-white focus:ring-4 focus:ring-primary-800/5 text-sm font-bold appearance-none transition-all"
+                      value={formData.status}
+                      onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  )}
                 </div>
 
                 <div className="pt-2 flex gap-4">

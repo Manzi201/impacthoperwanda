@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, Lock, Mail, ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react'
+import { Lock, Mail, ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
+import logo from '../assets/logo.png'
 
 const Login = () => {
   const [email, setEmail] = useState('')
@@ -43,12 +44,10 @@ const Login = () => {
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-16">
-            <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-              <Heart size={28} className="text-secondary-400" fill="currentColor" />
-            </div>
+            <img src={logo} alt="Impact Hope Rwanda" className="w-14 h-14 object-contain" />
             <div>
               <h1 className="text-2xl font-display font-bold tracking-tight">Impact Hope Rwanda</h1>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-primary-300 font-bold">Empowering Communities</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-primary-200 font-bold">Empowering Communities</p>
             </div>
           </div>
 
@@ -98,9 +97,7 @@ const Login = () => {
           className="w-full max-w-md"
         >
           <div className="lg:hidden flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-primary-800 rounded-xl flex items-center justify-center text-white">
-              <Heart size={24} fill="currentColor" />
-            </div>
+            <img src={logo} alt="Impact Hope" className="w-10 h-10 object-contain" />
             <h1 className="text-xl font-bold text-slate-900">Impact Hope</h1>
           </div>
 

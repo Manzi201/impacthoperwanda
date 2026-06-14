@@ -6,7 +6,6 @@ import {
   Wallet, 
   BarChart3, 
   LogOut,
-  Heart,
   UserPlus,
   ShieldCheck,
   User as UserIcon,
@@ -16,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../lib/utils'
 import { useAuth } from '../../hooks/useAuth'
+import logo from '../../assets/logo.png'
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation()
@@ -79,14 +79,12 @@ const Sidebar = ({ isOpen, onClose }) => {
         "fixed lg:sticky top-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col h-screen transition-transform duration-300 lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-8 flex items-center justify-between">
+        <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-900 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-900/20">
-              <Heart size={20} fill="currentColor" />
-            </div>
+            <img src={logo} alt="Impact Hope Rwanda" className="w-10 h-10 object-contain rounded-xl" />
             <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-tight">Impact Hope</h1>
-              <p className="text-[10px] text-primary-800 font-bold uppercase tracking-widest">Rwanda MIS</p>
+              <h1 className="text-base font-bold text-slate-900 leading-tight">Impact Hope</h1>
+              <p className="text-[10px] text-primary-600 font-bold uppercase tracking-widest">Rwanda MIS</p>
             </div>
           </div>
           <button 
