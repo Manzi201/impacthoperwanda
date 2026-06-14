@@ -31,7 +31,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { icon: Users, label: 'Beneficiaries', path: '/beneficiaries', roles: ['ceo', 'supervisor', 'education', 'hr'] },
     { icon: Target, label: 'Programs', path: '/programs', roles: ['ceo', 'supervisor', 'education'] },
     { icon: Wallet, label: 'Financials', path: '/financials', roles: ['ceo', 'finance'] },
-    { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['admin', 'ceo', 'finance', 'supervisor', 'hr'] },
+    { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['admin', 'ceo', 'finance', 'supervisor', 'education', 'hr'] },
     // Admin Only Items
     { icon: ShieldCheck, label: 'User Directory', path: '/admin/users', roles: ['admin'] },
     { icon: UserPlus, label: 'Create User', path: '/admin/create-user', roles: ['admin'] },

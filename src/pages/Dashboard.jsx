@@ -280,9 +280,10 @@ const EducationDashboard = ({ stats, activities, navigate }) => (
       <StatCard title="Program Completion" value={`${stats.programCompletion || 0}%`} icon={Activity} color="bg-emerald-600" />
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
       <QuickActionCard icon={Users} label="Register Beneficiary" sublabel="Add New Student / Client" onClick={() => navigate('/beneficiaries')} variant="dark" />
-      <QuickActionCard icon={FileText} label="View Program Reports" sublabel="Assigned Initiatives" onClick={() => navigate('/reports')} color="bg-amber-50" textColor="text-amber-700" />
+      <QuickActionCard icon={Target} label="View Programs" sublabel="All Assigned Initiatives" onClick={() => navigate('/programs')} color="bg-amber-50" textColor="text-amber-700" />
+      <QuickActionCard icon={FileText} label="View Reports" sublabel="Activity & Impact Data" onClick={() => navigate('/reports')} color="bg-emerald-50" textColor="text-emerald-700" />
     </div>
 
     <SectionCard title="Recent Activities" badge="Live">
