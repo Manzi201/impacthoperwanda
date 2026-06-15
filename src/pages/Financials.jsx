@@ -83,7 +83,8 @@ const Financials = () => {
         .from('programs')
         .update({ status: newStatus })
         .eq('id', selectedProgram.id)
-      if (error) throw error
+
+      if (error) throw new Error(`RLS Error: ${error.message} — Run HOTFIX 4 in Supabase SQL Editor`)
 
       // Notify the supervisor who requested it
       if (selectedProgram.requested_by) {
@@ -101,6 +102,7 @@ const Financials = () => {
       setSelectedProgram(null)
       setApprovalNote('')
       fetchPendingPrograms()
+      fetchTransactions()
     } catch (err) {
       alert('Error: ' + err.message)
     } finally {

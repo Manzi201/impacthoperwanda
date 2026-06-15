@@ -399,3 +399,24 @@ CREATE POLICY "notifications_update" ON public.notifications
 DROP POLICY IF EXISTS "programs_select" ON public.programs;
 CREATE POLICY "programs_select" ON public.programs
   FOR SELECT USING (auth.role() = 'authenticated');
+
+-- ============================================================
+-- HOTFIX 4: Allow Finance to UPDATE programs status (approval)
+-- Run in Supabase SQL Editor
+-- ============================================================
+
+-- Finance needs to UPDATE programs for approval workflow
+DROP POLICY IF EXISTS "programs_manage" ON public.programs;
+DROP POLICY IF EXISTS "programs_finance_update" ON public.programs;
+
+-- Finance/Admin can update program status (for approvals)
+CREATE POLICY "programs_finance_update" ON public.programs
+  FOR UPDATE USING (
+    public.get_my_role() IN ('admin', 'ceo', 'supervisor', 'finance')
+  );
+
+-- Admin/Supervisor/CEO can insert and delete programs  
+CREATE POLICY "programs_manage" ON public.programs
+  FOR ALL USING (
+    public.get_my_role() IN ('admin', 'ceo', 'supervisor')
+  );
